@@ -196,6 +196,33 @@
         if ([itemProvider hasItemConformingToTypeIdentifier:@"public.url"]) {
             [itemProvider loadItemForTypeIdentifier:@"public.url" options:nil completionHandler: ^(NSURL* item, NSError *error) {
                 --remainingAttachments;
+                // Right now we only support images, f.e. we can expect that an url points to an image file
+                // url in this case isn't just a web-url, but can also be the path on the file system, with javascript
+                // we would have problems accessing those
+                NSData *data = [NSData dataWithContentsOfURL:(NSURL*)item];
+                NSString *base64 = [data convertToBase64];
+                NSString *suggestedName = item.lastPathComponent;
+
+                NSString *uti = @"public.image";
+
+                NSString *registeredType = nil;
+                if ([itemProvider.registeredTypeIdentifiers count] > 0) {
+                    registeredType = itemProvider.registeredTypeIdentifiers[0];
+                } else {
+                    registeredType = uti;
+                }
+
+                NSString *mimeType =  [self mimeTypeFromUti:registeredType];
+
+                NSDictionary *dict = @{
+                                       @"text" : self.contentText,
+                                       @"data" : base64,
+                                       @"uti"  : uti,
+                                       @"utis" : itemProvider.registeredTypeIdentifiers,
+                                       @"name" : suggestedName,
+                                       @"type" : mimeType
+                                       };
+                /*
                 [self debug:[NSString stringWithFormat:@"public.url = %@", item]];
                 NSString *uti = @"public.url";
                 NSDictionary *dict = @{
@@ -206,6 +233,7 @@
                                            @"name": @"",
                                            @"type": [self mimeTypeFromUti:uti],
                                       };
+                 */
                 [items addObject:dict];
                 if (remainingAttachments == 0) {
                     [self sendResults:results];
